@@ -66,10 +66,10 @@ class UpgradeTests(unittest.TestCase):
 
     def test_roles_speech_workshop_and_independence(self):
         for code in ['PS3','PS4','IE3','IE4']:
-            self.assertEqual(self.role(code).status_code,302)
-        self.assertEqual(self.role('WORKSHOP',name_en='Workshop',name_zh='工作坊',audience='open').status_code,302)
+            self.assertEqual(self.role(code, 'save').status_code,302)
+        self.assertEqual(self.role('WORKSHOP','save',name_en='Workshop',name_zh='工作坊',audience='open').status_code,302)
         self.assertEqual(self.client.get('/book/PS3').status_code,200)
-        self.assertEqual(self.client.post('/book/PS3',data=dict(meeting_id=1,name='Speaker')).status_code,400)
+        self.assertEqual(self.client.post('/book/PS3',data=dict(meeting_id=1,name='')).status_code,400)
         self.assertEqual(self.client.post('/book/PS3',data=dict(meeting_id=1,name='Speaker',path='Path',project='L2P2',speech_title='PS3 talk')).status_code,302)
         self.assertEqual(self.client.post('/book/WORKSHOP',data=dict(meeting_id=1,name='Host')).status_code,302)
         self.assertIn('PS3 talk',self.client.get('/').get_data(as_text=True))

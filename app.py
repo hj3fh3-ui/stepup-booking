@@ -18,6 +18,11 @@ ROLES = [
     ("IE1", "Individual Evaluator 1", "备稿点评1", "member"),
     ("PS2", "Prepared Speaker 2", "备稿演讲2", "member"),
     ("IE2", "Individual Evaluator 2", "备稿点评2", "member"),
+    ("PS3", "Prepared Speaker 3", "备稿演讲3", "member"),
+    ("IE3", "Individual Evaluator 3", "备稿点评3", "member"),
+    ("PS4", "Prepared Speaker 4", "备稿演讲4", "member"),
+    ("IE4", "Individual Evaluator 4", "备稿点评4", "member"),
+    ("WORKSHOP", "Workshop Speaker", "工作坊主讲人", "member"),
     ("PHOTO", "Photographer", "摄影", "open"),
     ("SAA", "Sergeant at Arms", "礼宾官", "open"),
     ("TIMER", "Timer", "时间官", "open"),
@@ -72,6 +77,12 @@ def init_db():
     # Upgrade V0.1 databases safely.
     ensure_column(c, "meetings", "address", "TEXT NOT NULL DEFAULT ''")
     ensure_column(c, "meetings", "status", "TEXT NOT NULL DEFAULT 'active'")
+    old_booking_columns = {r['name'] for r in c.execute('PRAGMA table_info(bookings)')}
+    for column in ('project_no', 'project_intro', 'speech_time', 'ppt',
+                   'workshop_title', 'workshop_content', 'duration', 'introduction'):
+        ensure_column(c, 'bookings', column, "TEXT NOT NULL DEFAULT ''")
+    if 'project_no' not in old_booking_columns:
+        c.execute("UPDATE bookings SET project_no=COALESCE(project,'')")
     row = c.execute("SELECT COUNT(*) n FROM meetings").fetchone()
     if row["n"] == 0:
         c.execute("""INSERT INTO meetings
@@ -127,12 +138,22 @@ label{font-weight:650}.notice{background:#fff7ed;border:1px solid #fed7aa;paddin
 </style>
 """
 
-HOME = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">""" + STYLE + """</head><body><div class="wrap">
+BOOKING_DETAILS = """{% macro booking_details(b, r) -%}
+{% if r[0]=='WORKSHOP' %}
+{% if b.workshop_title %}<div class="muted">{{b.workshop_title}}</div>{% endif %}
+{% if b.duration %}<div class="muted">{{b.duration}}</div>{% endif %}
+{% elif r[4] or r[0] in ['PS1','PS2','PS3','PS4'] %}
+{% if b.project_no or b.speech_title %}<div class="muted">{{b.project_no}}{% if b.project_no and b.speech_title %} · {% endif %}{% if b.speech_title %}《{{b.speech_title}}》{% endif %}</div>{% endif %}
+{% if b.speech_time or b.ppt %}<div class="muted">{{b.speech_time}}{% if b.speech_time and b.ppt %} · {% endif %}{% if b.ppt %}PPT: {{b.ppt}}{% endif %}</div>{% endif %}
+{% endif %}
+{%- endmacro %}"""
+
+HOME = BOOKING_DETAILS + """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">""" + STYLE + """</head><body><div class="wrap">
 <div class="card">
 <h1>后浪 Step Up</h1>
 <h2>第 {{m.meeting_no}} 次中文会议</h2>
 <div class="meta">
-{% if m.theme %}<b>主题 Theme：</b>{{m.theme}}<br>{% endif %}
+<b>主题 Theme：</b>{{m.theme or '待定'}}<br>
 <b>时间 Time：</b>{{m.meeting_date}} {{weekday}} · {{m.start_time}}–{{m.end_time}}<br>
 {% if m.address %}<b>地点 Address：</b>{{m.address}}<br>{% endif %}
 </div>
@@ -143,12 +164,12 @@ HOME = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport"
 {% if m.status != 'recess' %}
 <div class="card"><h2>☀️ 会员角色 <span class="pill">Members Only</span></h2>
 {% for r in member_roles %}
-<div class="role"><div><b>{{r[0]}}</b> · {{r[1]}} / {{r[2]}}<br>{% if booked.get(r[0]) %}<span class="who">{{booked[r[0]]['name']}}</span>{% if r[4] %}<div class="muted">{{booked[r[0]]['path']}} {{booked[r[0]]['project']}} {{booked[r[0]]['speech_title']}}</div>{% endif %}{% else %}<span class="muted">空缺 / Available</span>{% endif %}</div>
+<div class="role"><div><b>{{r[0]}}</b> · {{r[1]}} / {{r[2]}}<br>{% if booked.get(r[0]) %}<span class="who">{{booked[r[0]]['name']}}</span>{{ booking_details(booked[r[0]], r) }}{% else %}<span class="muted">空缺 / Available</span>{% endif %}</div>
 <div>{% if booked.get(r[0]) %}<a class="btn danger" href="{{url_for('cancel_role',code=r[0])}}">取消</a>{% elif not r[5] %}<a class="btn" href="{{url_for('book_role',code=r[0])}}">报名</a>{% endif %}</div></div>{% endfor %}
 </div>
 <div class="card"><h2>🌹 通用角色 <span class="pill">Guests & Members</span></h2>
 {% for r in open_roles %}
-<div class="role"><div><b>{{r[0]}}</b> · {{r[1]}} / {{r[2]}}<br>{% if booked.get(r[0]) %}<span class="who">{{booked[r[0]]['name']}}</span>{% if r[4] %}<div class="muted">{{booked[r[0]]['path']}} {{booked[r[0]]['project']}} {{booked[r[0]]['speech_title']}}</div>{% endif %}{% else %}<span class="muted">空缺 / Available</span>{% endif %}</div>
+<div class="role"><div><b>{{r[0]}}</b> · {{r[1]}} / {{r[2]}}<br>{% if booked.get(r[0]) %}<span class="who">{{booked[r[0]]['name']}}</span>{{ booking_details(booked[r[0]], r) }}{% else %}<span class="muted">空缺 / Available</span>{% endif %}</div>
 <div>{% if booked.get(r[0]) %}<a class="btn danger" href="{{url_for('cancel_role',code=r[0])}}">取消</a>{% elif not r[5] %}<a class="btn" href="{{url_for('book_role',code=r[0])}}">报名</a>{% endif %}</div></div>{% endfor %}
 </div>
 <div class="card"><h2>👥 Participants / 参会名单</h2>
@@ -159,11 +180,21 @@ HOME = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport"
 
 FORM = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">""" + STYLE + """</head><body><div class="wrap"><div class="card">
 <h2>{{title}}</h2><form method="post"><input type="hidden" name="meeting_id" value="{{meeting_id}}">
+{% if workshop %}
+<label>主讲人 Speaker <span class="pill">必填</span></label><input name="name" required>
+<label>工作坊题目 Workshop Title</label><input name="workshop_title">
+<label>工作坊内容 Workshop Content</label><textarea name="workshop_content" rows="5"></textarea>
+<label>时长 Duration</label><input name="duration">
+<label>简介 Introduction</label><textarea name="introduction" rows="4"></textarea>
+{% elif speech %}
+<label>演讲者 Speaker <span class="pill">必填</span></label><input name="name" required>
+<label>项目编号 Project No.</label><input name="project_no">
+<label>项目介绍 Project Intro.</label><textarea name="project_intro" rows="5"></textarea>
+<label>演讲题目 Speech Title</label><input name="speech_title">
+<label>时长 Time</label><input name="speech_time" value="5-7 mins">
+<label>PPT</label><select name="ppt"><option value=""></option><option value="Y">Y</option><option value="N">N</option></select>
+{% else %}
 <label>姓名 Name</label><input name="name" required>
-{% if speech %}
-<label>演讲路径 Path</label><input name="path" required placeholder="例如：应用幽默">
-<label>项目进度 Project</label><input name="project" required placeholder="例如：L2P2">
-<label>演讲题目 Speech Title</label><input name="speech_title" required>
 {% endif %}
 <button type="submit">确认提交</button> <a class="btn btn2" href="/">返回</a>
 </form></div></div></body></html>"""
@@ -194,7 +225,7 @@ NEW = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" 
 <h2>创建第 {{next_no}} 次中文会议</h2>
 <p class="muted">默认日期为下一周六、时间 19:00–21:00；都可以手动修改。创建后上一期数据会保留。</p>
 <form method="post">
-<label>主题 Theme</label><input name="theme" placeholder="本周会议主题">
+<label>主题 Theme</label><input name="theme" value="待定">
 <label>日期 Date</label><input type="date" name="meeting_date" value="{{next_date}}" required>
 <label>开始时间 Start</label><input type="time" name="start_time" value="19:00" required>
 <label>结束时间 End</label><input type="time" name="end_time" value="21:00" required>
@@ -243,17 +274,27 @@ def book_role(code):
         role = c.execute('SELECT * FROM meeting_roles WHERE meeting_id=? AND code=? AND deleted=0',(m['id'],code)).fetchone()
         if role is None: abort(404)
         if request.method == 'POST':
-            fields = [request.form.get(k,'').strip() for k in ('name','path','project','speech_title')]
-            if not fields[0] or (role['speech'] and not all(fields)):
-                abort(400, '请填写姓名及所有备稿演讲信息。')
+            name = request.form.get('name','').strip()
+            if not name:
+                abort(400, '请填写姓名。')
+            columns = ('path', 'project', 'speech_title', 'project_no', 'project_intro',
+                       'speech_time', 'ppt', 'workshop_title', 'workshop_content',
+                       'duration', 'introduction')
+            values = {key: request.form.get(key, '').strip() for key in columns}
+            # Accept V0.3 form submissions without discarding their legacy fields.
+            if 'project_no' not in request.form:
+                values['project_no'] = values['project']
+            if values['ppt'] not in ('', 'Y', 'N'):
+                abort(400, 'PPT 请选择 Y 或 N。')
             try:
-                c.execute('INSERT INTO bookings(meeting_id,role_code,name,path,project,speech_title) VALUES(?,?,?,?,?,?)',(m['id'],code,*fields))
-                c.execute('INSERT OR IGNORE INTO participants(meeting_id,name) VALUES (?,?)',(m['id'],fields[0]))
+                c.execute('INSERT INTO bookings(meeting_id,role_code,name,' + ','.join(columns) + ') VALUES(' + ','.join('?' for _ in range(3+len(columns))) + ')',
+                          (m['id'], code, name, *(values[key] for key in columns)))
+                c.execute('INSERT OR IGNORE INTO participants(meeting_id,name) VALUES (?,?)',(m['id'],name))
                 flash('报名成功。')
             except sqlite3.IntegrityError:
                 flash('这个角色已经被报名了，请刷新查看。')
             return redirect('/')
-        return render_template_string(FORM,title=f"报名 {code} · {role['name_en']} / {role['name_zh']}",speech=role['speech'],meeting_id=m['id'])
+        return render_template_string(FORM,title=f"报名 {code} · {role['name_en']} / {role['name_zh']}",speech=role['speech'] or (code.startswith('PS') and code[2:].isdigit()),workshop=code=='WORKSHOP',meeting_id=m['id'])
 
 CONFIRM = """<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">""" + STYLE + """<div class="wrap"><div class="card"><h2>确认取消</h2><p>{{message}}</p><form method="post"><input type="hidden" name="token" value="{{token}}"><button class="danger">确认取消</button> <a class="btn btn2" href="/">返回，保留报名</a></form></div></div>"""
 
@@ -302,7 +343,7 @@ def edit_meeting():
     c=conn(); m=current_meeting(c)
     if request.method=="POST":
         c.execute("""UPDATE meetings SET theme=?,meeting_date=?,start_time=?,end_time=?,address=?,status=? WHERE id=?""",
-        (request.form["theme"].strip(),request.form["meeting_date"],request.form["start_time"],request.form["end_time"],
+        ((request.form.get("theme", "").strip() or "待定"),request.form["meeting_date"],request.form["start_time"],request.form["end_time"],
          request.form["address"].strip(),request.form["status"],m["id"]))
         c.commit(); c.close(); flash("本次会议信息已更新，原有报名没有被清除。"); return redirect("/")
     c.close(); return render_template_string(EDIT,m=m)
@@ -322,9 +363,13 @@ def new_meeting():
         c.execute("UPDATE meetings SET is_current=0 WHERE is_current=1")
         c.execute("""INSERT INTO meetings(meeting_no,meeting_date,start_time,end_time,theme,address,status,is_current)
         VALUES(?,?,?,?,?,?,?,1)""",(next_no,request.form["meeting_date"],request.form["start_time"],request.form["end_time"],
-        request.form["theme"].strip(),request.form["address"].strip(),request.form["status"]))
+        (request.form.get("theme", "").strip() or "待定"),request.form["address"].strip(),request.form["status"]))
         new_id=c.execute("SELECT last_insert_rowid()").fetchone()[0]
         c.execute("INSERT INTO meeting_roles SELECT ?,code,name_en,name_zh,audience,speech,position,0 FROM meeting_roles WHERE meeting_id=? AND deleted=0", (new_id,m['id']))
+        # Complete the default roster only for the new meeting; history is untouched.
+        for position, role in enumerate(ROLES):
+            c.execute("INSERT OR IGNORE INTO meeting_roles VALUES(?,?,?,?,?,?,?,0)",
+                      (new_id, *role[:3], role[3], int(role[0].startswith('PS')), position))
         c.execute("UPDATE meetings SET roles_initialized=1 WHERE id=?", (new_id,))
         c.commit(); c.close(); flash(f"第 {next_no} 次会议已创建。上一期记录已保留。"); return redirect("/")
     c.close(); return render_template_string(NEW,m=m,next_no=next_no,next_date=nd.isoformat())
@@ -334,9 +379,9 @@ ROLE_PAGE = """<!doctype html><meta charset="utf-8"><meta name="viewport" conten
 <label>English Name</label><input name="name_en" value="{{r.name_en}}" required>
 <label>中文名称</label><input name="name_zh" value="{{r.name_zh}}" required>
 <label>报名范围</label><select name="audience"><option value="member" {% if r.audience=='member' %}selected{% endif %}>Member Only</option><option value="open" {% if r.audience=='open' %}selected{% endif %}>Guests & Members</option></select>
-<label>环节类型</label><select name="speech"><option value="0">普通角色 / 临时环节</option><option value="1" {% if r.speech %}selected{% endif %}>备稿演讲（必填 Path、Project、Speech Title）</option></select>
+<label>环节类型</label><select name="speech"><option value="0">普通角色 / 临时环节</option><option value="1" {% if r.speech %}selected{% endif %}>备稿演讲</option></select>
 <button name="action" value="save">保存修改</button> <button class="danger" name="action" value="delete" onclick="return confirm('确认删除本期角色？已有报名仍会保留。')">删除角色</button></form></div>{% endfor %}
-<div class="card"><h3>新增角色</h3><form method="post"><label>角色代码（如 PS3、IE3、WORKSHOP）</label><input name="code" required><label>English Name</label><input name="name_en" required><label>中文名称</label><input name="name_zh" required><label>报名范围</label><select name="audience"><option value="member">Member Only</option><option value="open">Guests & Members</option></select><label>环节类型</label><select name="speech"><option value="0">普通角色 / 临时环节</option><option value="1">备稿演讲（必填 Path、Project、Speech Title）</option></select><button name="action" value="add">新增角色</button></form></div></div>"""
+<div class="card"><h3>新增角色</h3><form method="post"><label>角色代码（如 PS3、IE3、WORKSHOP）</label><input name="code" required><label>English Name</label><input name="name_en" required><label>中文名称</label><input name="name_zh" required><label>报名范围</label><select name="audience"><option value="member">Member Only</option><option value="open">Guests & Members</option></select><label>环节类型</label><select name="speech"><option value="0">普通角色 / 临时环节</option><option value="1">备稿演讲</option></select><button name="action" value="add">新增角色</button></form></div></div>"""
 
 @app.route('/admin/meetings/<int:mid>/current', methods=['POST'])
 def set_current(mid):

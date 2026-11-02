@@ -52,3 +52,17 @@ PythonAnywhere 更新步骤：
    python -m unittest discover -s tests -v
 4. 在 PythonAnywhere 的 Web 页面点击 Reload。不要删除 stepup.db，不要上传测试数据库覆盖它。
    保持现有 WSGI 配置（from app import app as application）。不要在线上运行 Flask 开发服务器。
+
+V0.4（当前版本，以下报名规则替代 V0.3 的必填规则）
+- 新会议复制上一期有效角色，并补齐四组 PS1–PS4 / IE1–IE4 及会员 WORKSHOP / Workshop Speaker / 工作坊主讲人。
+- 迁移不会向已配置的旧会议强行添加角色或改名；可继续在后台按期编辑。
+- 备稿仅 Speaker 必填；Project No.、Project Intro.、Speech Title、Time、PPT 均可留空。
+- Time 表单默认 5-7 mins，可修改或清空；PPT 可留空或选择 Y/N。
+- 工作坊仅 Speaker 必填；题目、内容、时长、简介均可留空。
+- 首页仅显示姓名及已填写的摘要；项目介绍、工作坊内容和简介完整保存，不在首页展开。
+- 新会议 Theme 输入框真实默认值为“待定”，空白提交也保存为“待定”；旧空主题在首页显示“待定”。
+- 自动迁移向 bookings 添加 project_no、project_intro、speech_time、ppt、workshop_title、workshop_content、duration、introduction。
+- 首次迁移将旧 project 复制到 project_no，保留旧 path、project、speech_title 等所有原字段。
+- 上面的 PythonAnywhere 备份、拉取、安装和 Reload 步骤仍适用；迁移命令单独如下（在项目目录、使用线上 virtualenv）：
+  python -c "from app import init_db; init_db(); print('V0.4 migration OK')"
+- 回归测试仍运行：python -m unittest discover -s tests -v（仅临时数据库）。
