@@ -71,8 +71,7 @@ class BookingTests(unittest.TestCase):
                 html=self.client.get('/').get_data(as_text=True)
                 self.assertNotIn('PRIVATE INTRO',html)
                 self.assertNotIn('项目介绍第一行',html)
-                if fields.get('ppt'): self.assertIn('PPT: '+fields['ppt'],html)
-                else: self.assertNotIn('PPT:',html)
+                self.assertNotIn('PPT:',html)
                 if fields.get('speech_title'): self.assertIn('《Token欠费了》',html)
                 else: self.assertNotIn('《',html)
                 self.assertNotIn(' · </div>',html)
@@ -86,7 +85,7 @@ class BookingTests(unittest.TestCase):
         for key,value in fields.items(): self.assertEqual(row[key],value)
         html=self.client.get('/').get_data(as_text=True)
         self.assertIn('工作坊主题',html)
-        self.assertIn('45 mins',html)
+        self.assertNotIn('45 mins',html)
         self.assertNotIn('PRIVATE CONTENT',html)
         self.assertNotIn('PRIVATE BIO',html)
 
@@ -131,8 +130,8 @@ class BookingTests(unittest.TestCase):
             self.assertEqual([tuple(r) for r in c.execute('SELECT * FROM bookings ORDER BY id')],original)
             self.assertEqual([tuple(r) for r in c.execute('SELECT * FROM participants ORDER BY id')],participants)
         html=self.client.get('/').get_data(as_text=True)
-        self.assertIn('7 mins',html)
-        self.assertIn('30 mins',html)
+        self.assertNotIn('7 mins',html)
+        self.assertNotIn('30 mins',html)
 
     def test_v03_migration_preserves_every_legacy_field(self):
         # Fixture uses the published V0.3 schema, without the new columns.
@@ -153,8 +152,10 @@ class BookingTests(unittest.TestCase):
         app.DB=legacy_db
         app.init_db(); app.init_db()
         with app.conn() as c:
-            for table in ['meetings','meeting_roles','participants']:
+            for table in ['meetings','participants']:
                 self.assertEqual([tuple(r) for r in c.execute('SELECT * FROM '+table)],before[table])
+            roles=[tuple(r) for r in c.execute('SELECT * FROM meeting_roles')]
+            self.assertEqual([r[:6]+r[7:] for r in roles],[r[:6]+r[7:] for r in before['meeting_roles']])
             row=c.execute('SELECT * FROM bookings').fetchone()
             self.assertEqual(tuple(row)[:7],before['bookings'][0])
             self.assertEqual(row['project_no'],'L1P2')

@@ -66,3 +66,12 @@ V0.4（当前版本，以下报名规则替代 V0.3 的必填规则）
 - 上面的 PythonAnywhere 备份、拉取、安装和 Reload 步骤仍适用；迁移命令单独如下（在项目目录、使用线上 virtualenv）：
   python -c "from app import init_db; init_db(); print('V0.4 migration OK')"
 - 回归测试仍运行：python -m unittest discover -s tests -v（仅临时数据库）。
+
+正式版整理更新（当前规则覆盖上面的旧版首页展示规则）
+- 当前会议、新会议和切换为当前的会议会安全规范默认角色 position；仅修改位置，不覆盖名称、范围、类型或报名。
+- PS 首页只显示姓名和已填写的演讲题目；WORKSHOP 只显示姓名和已填写的工作坊题目。
+- PS1–PS4、WORKSHOP 支持“修改”，回填原表单并 UPDATE 原 booking；姓名改变会补充新的参会姓名，原参会记录保留。
+- Project No. / Intro. / Time / PPT / Workshop Content / Duration / Introduction 仍完整保存。
+- 一次性实验会议清理脚本：scripts/cleanup_experiment_meetings.py。默认预览，--confirm 才备份并删除 >360 的会议及关联数据。
+- 正常 init_db 和服务启动永不自动运行清理脚本。
+- 完整 PythonAnywhere 命令和 Reload 前后步骤见 DEPLOYMENT.md。
